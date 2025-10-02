@@ -1,4 +1,4 @@
-import { Canvas, painters } from "headbreaker";
+import { Canvas, painters, PuzzleValidator } from "headbreaker";
 import headbreaker from "headbreaker";
 import { useEffect } from "react";
 
@@ -17,19 +17,15 @@ function PuzzleCanvas({ id, image }) {
         pieceSize: 100,
         proximity: 20,
         borderFill: 10,
-        preventOffstageDrag: true, // <-- this is important. See https://github.com/flbulgarelli/headbreaker/issues/51
+        preventOffstageDrag: true,
       });
       canvas.adjustImagesToPuzzleHeight();
       canvas.autogenerate({
-        horizontalPiecesCount: 3,
+        horizontalPiecesCount: 2,
         verticalPiecesCount: 2,
       });
       canvas.shuffle();
       canvas.draw();
-      canvas.attachSolvedValidator();
-      canvas.onValid = () => {
-        alert("Solved");
-      };
       canvas.onConnect((_piece, figure, _target, targetFigure) => {
         // paint borders on click
         // of conecting and conected figures
