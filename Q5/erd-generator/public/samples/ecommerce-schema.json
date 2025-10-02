@@ -1,0 +1,111 @@
+{
+  "tables": [
+    {
+      "name": "users",
+      "columns": [
+        { "name": "id", "type": "int", "pk": true },
+        {
+          "name": "email",
+          "type": "varchar",
+          "description": "User email address"
+        },
+        {
+          "name": "name",
+          "type": "varchar",
+          "description": "Full name of the user"
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp",
+          "description": "Account creation date"
+        }
+      ]
+    },
+    {
+      "name": "orders",
+      "columns": [
+        { "name": "id", "type": "int", "pk": true },
+        {
+          "name": "user_id",
+          "type": "int",
+          "fk": "users.id",
+          "description": "Reference to user who placed the order"
+        },
+        {
+          "name": "total",
+          "type": "decimal",
+          "description": "Total order amount"
+        },
+        {
+          "name": "status",
+          "type": "varchar",
+          "description": "Order status (pending, completed, cancelled)"
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp",
+          "description": "Order creation date"
+        }
+      ]
+    },
+    {
+      "name": "products",
+      "columns": [
+        { "name": "id", "type": "int", "pk": true },
+        { "name": "name", "type": "varchar", "description": "Product name" },
+        { "name": "price", "type": "decimal", "description": "Product price" },
+        {
+          "name": "category_id",
+          "type": "int",
+          "fk": "categories.id",
+          "description": "Product category"
+        },
+        {
+          "name": "stock_quantity",
+          "type": "int",
+          "description": "Available stock"
+        }
+      ]
+    },
+    {
+      "name": "categories",
+      "columns": [
+        { "name": "id", "type": "int", "pk": true },
+        { "name": "name", "type": "varchar", "description": "Category name" },
+        {
+          "name": "description",
+          "type": "text",
+          "description": "Category description"
+        }
+      ]
+    },
+    {
+      "name": "order_items",
+      "columns": [
+        { "name": "id", "type": "int", "pk": true },
+        {
+          "name": "order_id",
+          "type": "int",
+          "fk": "orders.id",
+          "description": "Reference to order"
+        },
+        {
+          "name": "product_id",
+          "type": "int",
+          "fk": "products.id",
+          "description": "Reference to product"
+        },
+        {
+          "name": "quantity",
+          "type": "int",
+          "description": "Quantity ordered"
+        },
+        {
+          "name": "unit_price",
+          "type": "decimal",
+          "description": "Price per unit at time of order"
+        }
+      ]
+    }
+  ]
+}

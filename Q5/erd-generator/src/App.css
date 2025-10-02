@@ -1,0 +1,51 @@
+.react-flow__node-table {
+  background: white;
+  border: 2px solid #1890ff;
+  border-radius: 8px;
+  padding: 10px;
+  min-width: 200px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.table-header {
+  background: #1890ff;
+  color: white;
+  padding: 8px 12px;
+  margin: -10px -10px 8px -10px;
+  border-radius: 6px 6px 0 0;
+  font-weight: bold;
+  text-align: center;
+}
+
+.table-column {
+  padding: 4px 0;
+  border-bottom: 1px solid #f0f0f0;
+  font-size: 12px;
+}
+
+.table-column:last-child {
+  border-bottom: none;
+}
+
+.column-name {
+  font-weight: 500;
+  color: #262626;
+}
+
+.column-type {
+  color: #8c8c8c;
+  font-size: 11px;
+}
+
+.primary-key {
+  color: #faad14;
+}
+
+.foreign-key {
+  color: #52c41a;
+}
+
+.export-section {
+  text-align: center;
+  margin-top: 24px;
+}
