@@ -3,7 +3,7 @@ import PuzzleCanvas from "./PuzzleCanvas";
 function Puzzle() {
   return (
     <div>
-      <PuzzleCanvas id="puzzle" />
+      <PuzzleCanvas id="puzzle" image="/ClearThinking.jpg" />
     </div>
   );
 }
