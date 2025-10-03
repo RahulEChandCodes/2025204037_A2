@@ -1,0 +1,64 @@
+body {
+  font-family: "Quicksand", sans-serif;
+  font-size: 16px;
+  color: #333;
+}
+
+/* Smooth scroll behavior */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Navigation */
+.navbar {
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Header section */
+header {
+  background: linear-gradient(135deg, #0d6efd 0%, #0a58ca 100%);
+}
+
+/* Section spacing */
+section {
+  scroll-margin-top: 70px;
+  margin-bottom: 3rem;
+}
+
+/* Tables */
+.table {
+  font-size: 0.9rem;
+}
+
+.light-text-row {
+  color: #adadad;
+}
+
+/* Links */
+a {
+  color: #0d6efd;
+  text-decoration: none;
+}
+
+a:hover {
+  color: #0a58ca;
+  text-decoration: underline;
+}
+
+/* Custom container for larger screens */
+@media (min-width: 1400px) {
+  .container {
+    max-width: 1320px;
+  }
+}
+
+/* Time display */
+#txt {
+  font-size: 0.9rem;
+  opacity: 0.8;
+}
+
+/* Table styles */
+.table th {
+  background-color: #f8f9fa;
+}
