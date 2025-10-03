@@ -10,6 +10,8 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@ant-design/icons": "^5.6.1",
+    "antd": "^5.27.4",
     "headbreaker": "^3.0.0",
     "konva": "^10.0.2",
     "react": "^19.1.1",
