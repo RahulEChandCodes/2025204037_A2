@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Bowling Game - Three.js</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: "Arial", sans-serif;
+        background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+        overflow: hidden;
+        color: white;
+      }
+
+      #gameContainer {
+        position: relative;
+        width: 100vw;
+        height: 100vh;
+      }
+
+      #gameCanvas {
+        display: block;
+      }
+
+      #ui {
+        position: absolute;
+        top: 20px;
+        left: 20px;
+        z-index: 100;
+        background: rgba(0, 0, 0, 0.7);
+        padding: 20px;
+        border-radius: 10px;
+        backdrop-filter: blur(10px);
+      }
+
+      #scoreBoard {
+        margin-bottom: 15px;
+      }
+
+      .frame {
+        display: inline-block;
+        width: 50px;
+        height: 40px;
+        border: 2px solid #fff;
+        margin: 2px;
+        text-align: center;
+        line-height: 18px;
+        vertical-align: top;
+        background: rgba(255, 255, 255, 0.1);
+      }
+
+      .frame-number {
+        font-size: 10px;
+        font-weight: bold;
+      }
+
+      .frame-score {
+        font-size: 12px;
+      }
+
+      #controls {
+        margin-top: 15px;
+      }
+
+      .control-item {
+        margin: 5px 0;
+        font-size: 14px;
+      }
+
+      #powerMeter {
+        width: 200px;
+        height: 20px;
+        background: rgba(255, 255, 255, 0.3);
+        border: 2px solid #fff;
+        border-radius: 10px;
+        margin: 10px 0;
+        position: relative;
+        overflow: hidden;
+      }
+
+      #powerBar {
+        height: 100%;
+        background: linear-gradient(
+          90deg,
+          #4caf50 0%,
+          #ffeb3b 50%,
+          #f44336 100%
+        );
+        width: 0%;
+        transition: width 0.1s ease;
+      }
+
+      #instructions {
+        position: absolute;
+        bottom: 20px;
+        right: 20px;
+        background: rgba(0, 0, 0, 0.7);
+        padding: 15px;
+        border-radius: 10px;
+        backdrop-filter: blur(10px);
+        max-width: 300px;
+      }
+
+      .instruction-title {
+        font-weight: bold;
+        margin-bottom: 10px;
+        color: #ffd700;
+      }
+
+      .instruction-item {
+        margin: 5px 0;
+        font-size: 12px;
+      }
+
+      #gameStatus {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        text-align: center;
+        z-index: 200;
+        display: none;
+      }
+
+      .status-message {
+        font-size: 48px;
+        font-weight: bold;
+        text-shadow: 3px 3px 6px rgba(0, 0, 0, 0.8);
+        margin-bottom: 20px;
+      }
+
+      .strike {
+        color: #ffd700;
+        animation: pulse 2s infinite;
+      }
+
+      .spare {
+        color: #4caf50;
+        animation: pulse 2s infinite;
+      }
+
+      .gutter {
+        color: #ff6b6b;
+        animation: shake 1s ease-in-out;
+      }
+
+      @keyframes pulse {
+        0%,
+        100% {
+          transform: scale(1);
+        }
+        50% {
+          transform: scale(1.1);
+        }
+      }
+
+      @keyframes shake {
+        0%,
+        100% {
+          transform: translateX(0);
+        }
+        10%,
+        30%,
+        50%,
+        70%,
+        90% {
+          transform: translateX(-5px);
+        }
+        20%,
+        40%,
+        60%,
+        80% {
+          transform: translateX(5px);
+        }
+      }
+
+      button {
+        background: linear-gradient(45deg, #ffd700, #ffa000);
+        border: none;
+        color: #333;
+        padding: 10px 20px;
+        border-radius: 5px;
+        cursor: pointer;
+        font-weight: bold;
+        margin: 5px;
+        transition: all 0.3s ease;
+      }
+
+      button:hover {
+        background: linear-gradient(45deg, #ffa000, #ffd700);
+        transform: translateY(-2px);
+      }
+
+      button:disabled {
+        background: #666;
+        cursor: not-allowed;
+        transform: none;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="gameContainer">
+      <canvas id="gameCanvas"></canvas>
+
+      <div id="ui">
+        <div id="scoreBoard">
+          <h3>Score Board</h3>
+          <div id="frames"></div>
+          <div id="totalScore">Total Score: 0</div>
+        </div>
+
+        <div id="gameInfo">
+          <div>Frame: <span id="currentFrame">1</span>/10</div>
+          <div>Ball: <span id="currentBall">1</span></div>
+          <div>Pins Down: <span id="pinsDown">0</span></div>
+        </div>
+
+        <div id="controls">
+          <div class="control-item">
+            <label>Power:</label>
+            <div id="powerMeter">
+              <div id="powerBar"></div>
+            </div>
+          </div>
+          <button id="throwButton">Throw Ball</button>
+          <button id="resetGameButton">New Game</button>
+        </div>
+      </div>
+
+      <div id="instructions">
+        <div class="instruction-title">How to Play</div>
+        <div class="instruction-item">• Move mouse to aim left/right</div>
+        <div class="instruction-item">
+          • Hold SPACE or click "Throw Ball" to charge power
+        </div>
+        <div class="instruction-item">• Release to throw the ball</div>
+        <div class="instruction-item">• Strike: All pins down in one throw</div>
+        <div class="instruction-item">• Spare: All pins down in two throws</div>
+        <div class="instruction-item">• Game consists of 10 frames</div>
+      </div>
+
+      <div id="gameStatus">
+        <div class="status-message"></div>
+        <button id="continueButton" style="display: none">Continue</button>
+      </div>
+    </div>
+
+    <script type="module" src="./main.js"></script>
+  </body>
+</html>
