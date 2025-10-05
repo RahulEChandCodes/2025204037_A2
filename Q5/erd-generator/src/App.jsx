@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { Layout, Typography, Divider } from "antd";
+import React, { useState, useEffect } from "react";
+import { Layout, Typography, Divider, notification } from "antd";
 import SchemaInput from "./components/SchemaInput";
 import Diagram from "./components/Diagram";
 import DataDictionary from "./components/DataDictionary";
@@ -13,14 +13,38 @@ const { Title } = Typography;
 function App() {
   const [parsedSchema, setParsedSchema] = useState(null);
   const [error, setError] = useState(null);
+  const [api, contextHolder] = notification.useNotification();
 
   const handleSchemaChange = (schema, errorMsg = null) => {
     setParsedSchema(schema);
     setError(errorMsg);
+
+    // Show success notification and scroll to diagram if schema is valid
+    if (schema && !errorMsg) {
+      api.success({
+        message: "Schema Converted Successfully!",
+        description:
+          "Your schema has been converted into a diagram and data dictionary.",
+        placement: "bottomLeft",
+        duration: 4,
+      });
+
+      // Scroll to diagram after a brief delay to allow rendering
+      setTimeout(() => {
+        const diagramElement = document.getElementById("erd-content");
+        if (diagramElement) {
+          diagramElement.scrollIntoView({
+            behavior: "smooth",
+            block: "start",
+          });
+        }
+      }, 300);
+    }
   };
 
   return (
     <Layout style={{ minHeight: "100vh" }}>
+      {contextHolder}
       <Header style={{ background: "#001529", padding: "0 24px" }}>
         <Title level={2} style={{ color: "white", margin: "16px 0" }}>
           ERD Generator

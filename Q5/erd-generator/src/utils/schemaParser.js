@@ -1,11 +1,9 @@
-import { parseStringPromise } from "xml2js";
-
 export const parseSchema = async (input, mode) => {
   try {
     if (mode === "json") {
       return parseJSONSchema(input);
     } else if (mode === "xml") {
-      return await parseXMLSchema(input);
+      return parseXMLSchema(input);
     } else {
       throw new Error("Invalid input mode");
     }
@@ -58,75 +56,71 @@ const parseJSONSchema = (jsonString) => {
   }
 };
 
-const parseXMLSchema = async (xmlString) => {
+const parseXMLSchema = (xmlString) => {
   try {
-    const options = {
-      explicitArray: false,
-      mergeAttrs: true,
-      ignoreAttrs: false,
-      attrkey: "@",
-    };
+    const parser = new DOMParser();
+    const xmlDoc = parser.parseFromString(xmlString, "text/xml");
 
-    const result = await parseStringPromise(xmlString, options);
+    // Check for parsing errors
+    const parseError = xmlDoc.querySelector("parsererror");
+    if (parseError) {
+      throw new Error("Invalid XML format: " + parseError.textContent);
+    }
 
-    // Handle different XML structures
-    let tablesData = [];
-
-    if (result.database && result.database.table) {
-      const tables = Array.isArray(result.database.table)
-        ? result.database.table
-        : [result.database.table];
-
-      tablesData = tables.map((table) => {
-        const tableName = table["@name"] || table.name;
-        if (!tableName) {
-          throw new Error("Each table must have a name attribute");
-        }
-
-        let columns = [];
-        if (table.column) {
-          const columnArray = Array.isArray(table.column)
-            ? table.column
-            : [table.column];
-          columns = columnArray.map((col) => {
-            const columnName = col["@name"] || col.name;
-            const columnType = col["@type"] || col.type;
-
-            if (!columnName || !columnType) {
-              throw new Error(
-                `Column in table "${tableName}" must have name and type attributes`
-              );
-            }
-
-            const column = {
-              name: columnName,
-              type: columnType,
-            };
-
-            // Handle primary key
-            if (col["@pk"] === "true" || col.pk === "true" || col.pk === true) {
-              column.pk = true;
-            }
-
-            // Handle foreign key
-            if (col["@fk"] || col.fk) {
-              column.fk = col["@fk"] || col.fk;
-            }
-
-            return column;
-          });
-        }
-
-        return {
-          name: tableName,
-          columns: columns,
-        };
-      });
-    } else {
+    const databaseElement = xmlDoc.querySelector("database");
+    if (!databaseElement) {
       throw new Error(
         "XML must contain a database root element with table children"
       );
     }
+
+    const tableElements = databaseElement.querySelectorAll("table");
+    if (tableElements.length === 0) {
+      throw new Error("Database must contain at least one table");
+    }
+
+    const tablesData = Array.from(tableElements).map((tableElement) => {
+      const tableName = tableElement.getAttribute("name");
+      if (!tableName) {
+        throw new Error("Each table must have a name attribute");
+      }
+
+      const columnElements = tableElement.querySelectorAll("column");
+      const columns = Array.from(columnElements).map((colElement) => {
+        const columnName = colElement.getAttribute("name");
+        const columnType = colElement.getAttribute("type");
+
+        if (!columnName || !columnType) {
+          throw new Error(
+            `Column in table "${tableName}" must have name and type attributes`
+          );
+        }
+
+        const column = {
+          name: columnName,
+          type: columnType,
+        };
+
+        // Handle primary key
+        const pkAttr = colElement.getAttribute("pk");
+        if (pkAttr === "true") {
+          column.pk = true;
+        }
+
+        // Handle foreign key
+        const fkAttr = colElement.getAttribute("fk");
+        if (fkAttr) {
+          column.fk = fkAttr;
+        }
+
+        return column;
+      });
+
+      return {
+        name: tableName,
+        columns: columns,
+      };
+    });
 
     return { tables: tablesData };
   } catch (error) {
