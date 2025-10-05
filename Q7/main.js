@@ -20,9 +20,10 @@ class BowlingGame {
     this.gameState = {
       currentFrame: 1,
       currentBall: 1,
-      scores: new Array(10).fill([]),
+      scores: Array.from({ length: 10 }, () => []), // Create separate arrays for each frame
       totalScore: 0,
       pinsDown: 0,
+      pinsDownThisFrame: 0, // Track pins from start of current frame
       gameOver: false,
       ballThrown: false,
       ballSettled: true,
@@ -58,8 +59,9 @@ class BowlingGame {
   setupScene() {
     // Create scene
     this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color(0x1a1a2e);
-    this.scene.fog = new THREE.Fog(0x1a1a2e, 10, 50);
+    // Authentic bowling alley atmosphere - dim, warm lighting
+    this.scene.background = new THREE.Color(0x2f2f2f); // Dark gray
+    this.scene.fog = new THREE.Fog(0x2f2f2f, 15, 40); // Atmospheric fog
 
     // Create camera
     this.camera = new THREE.PerspectiveCamera(
@@ -123,28 +125,55 @@ class BowlingGame {
     this.world.addContactMaterial(ballLaneContact);
     this.world.addContactMaterial(ballPinContact);
     this.world.addContactMaterial(pinPinContact);
+
+    // Add collision event listener for debugging
+    this.world.addEventListener("beginContact", (event) => {
+      const { bodyA, bodyB } = event;
+
+      // Check if ball hit a pin
+      if (this.ballBody && this.pinBodies && this.pinBodies.length > 0) {
+        if (
+          (bodyA === this.ballBody && this.pinBodies.includes(bodyB)) ||
+          (bodyB === this.ballBody && this.pinBodies.includes(bodyA))
+        ) {
+          console.log("Ball hit a pin! Ball position:", this.ballBody.position);
+        }
+      }
+    });
   }
 
   createLane() {
-    // Main lane geometry
+    // Main bowling lane - authentic maple wood
     const laneGeometry = new THREE.BoxGeometry(
       this.LANE_WIDTH,
       0.1,
       this.LANE_LENGTH
     );
-    const laneMaterial = new THREE.MeshLambertMaterial({
-      color: 0x8b4513,
-      transparent: true,
-      opacity: 0.8,
+
+    // Realistic polished maple bowling lane material
+    const laneMaterial = new THREE.MeshPhongMaterial({
+      color: 0xd2b48c, // Light wood color
+      specular: 0x444444,
+      shininess: 100, // Highly polished surface
+      transparent: false,
     });
+
     this.lane = new THREE.Mesh(laneGeometry, laneMaterial);
     this.lane.position.set(0, -0.05, this.LANE_LENGTH / 2);
     this.lane.receiveShadow = true;
+    this.lane.castShadow = false;
     this.scene.add(this.lane);
 
-    // Pin collection area (behind pins)
+    // Add wood grain effect with subtle texture
+    this.addWoodGrainEffect();
+
+    // Pin collection area - darker hardwood
     const pinAreaGeometry = new THREE.BoxGeometry(this.LANE_WIDTH, 0.1, 2);
-    const pinAreaMaterial = new THREE.MeshLambertMaterial({ color: 0x654321 });
+    const pinAreaMaterial = new THREE.MeshPhongMaterial({
+      color: 0x8b4513, // Saddle brown
+      specular: 0x333333,
+      shininess: 60,
+    });
     this.pinArea = new THREE.Mesh(pinAreaGeometry, pinAreaMaterial);
     this.pinArea.position.set(0, -0.05, this.LANE_LENGTH + 1);
     this.pinArea.receiveShadow = true;
@@ -171,66 +200,306 @@ class BowlingGame {
     this.pinAreaBody.position.set(0, -0.05, this.LANE_LENGTH + 1);
     this.world.addBody(this.pinAreaBody);
 
-    // Create gutters
+    // Create gutters (trenches, not walls!)
     this.createGutters();
+
+    // Create pin collection area at end of lane
+    this.createPinCollectionArea();
+
+    // Create invisible safety boundaries to prevent ball from falling off map
+    this.createSafetyBoundaries();
 
     // Create pin deck markers
     this.createPinDeckMarkers();
 
     // Create lane markings
     this.createLaneMarkings();
+
+    // Add bowling alley atmosphere
+    this.createBowlingAlleyAtmosphere();
+  }
+
+  addWoodGrainEffect() {
+    // Create subtle wood grain lines along the lane
+    const grainLines = 8;
+    for (let i = 0; i < grainLines; i++) {
+      const grainGeometry = new THREE.BoxGeometry(
+        0.005,
+        0.001,
+        this.LANE_LENGTH
+      );
+      const grainMaterial = new THREE.MeshBasicMaterial({
+        color: 0xa0522d, // Darker wood tone
+        transparent: true,
+        opacity: 0.3,
+      });
+      const grainLine = new THREE.Mesh(grainGeometry, grainMaterial);
+      const xPos = (i - grainLines / 2) * (this.LANE_WIDTH / grainLines);
+      grainLine.position.set(xPos, 0.001, this.LANE_LENGTH / 2);
+      this.scene.add(grainLine);
+    }
   }
 
   createGutters() {
-    const gutterWidth = 0.2;
-    const gutterHeight = 0.1;
+    // Create realistic bowling alley gutters
+    const gutterWidth = 0.24; // Standard gutter width
+    const gutterDepth = 0.15;
+    const gutterLength = this.LANE_LENGTH;
 
-    // Left gutter
-    const leftGutterGeometry = new THREE.BoxGeometry(
+    // Professional bowling gutter material - fiberglass/composite
+    const gutterGeometry = new THREE.BoxGeometry(
       gutterWidth,
-      gutterHeight,
-      this.LANE_LENGTH
+      gutterDepth,
+      gutterLength
     );
-    const gutterMaterial = new THREE.MeshLambertMaterial({ color: 0x333333 });
-    const leftGutter = new THREE.Mesh(leftGutterGeometry, gutterMaterial);
+    const gutterMaterial = new THREE.MeshPhongMaterial({
+      color: 0x1a1a1a, // Dark charcoal
+      specular: 0x444444,
+      shininess: 40,
+      transparent: false,
+    });
+
+    // Left gutter trench (visual only - no collision)
+    const leftGutter = new THREE.Mesh(gutterGeometry, gutterMaterial);
     leftGutter.position.set(
       -(this.LANE_WIDTH / 2 + gutterWidth / 2),
-      gutterHeight / 2 - 0.05,
-      this.LANE_LENGTH / 2
+      -gutterDepth / 2, // Below ground level
+      gutterLength / 2
     );
     leftGutter.receiveShadow = true;
     this.scene.add(leftGutter);
 
-    // Right gutter
-    const rightGutter = new THREE.Mesh(leftGutterGeometry, gutterMaterial);
+    // Right gutter trench (visual only - no collision)
+    const rightGutter = new THREE.Mesh(gutterGeometry, gutterMaterial);
     rightGutter.position.set(
       this.LANE_WIDTH / 2 + gutterWidth / 2,
-      gutterHeight / 2 - 0.05,
-      this.LANE_LENGTH / 2
+      -gutterDepth / 2, // Below ground level
+      gutterLength / 2
     );
     rightGutter.receiveShadow = true;
     this.scene.add(rightGutter);
 
-    // Gutter physics bodies
-    const gutterShape = new CANNON.Box(
-      new CANNON.Vec3(gutterWidth / 2, gutterHeight / 2, this.LANE_LENGTH / 2)
+    // Create gutter floors for balls to settle on
+    const gutterFloorGeometry = new THREE.BoxGeometry(
+      gutterWidth,
+      0.05,
+      gutterLength
     );
-
-    const leftGutterBody = new CANNON.Body({
-      mass: 0,
-      material: this.laneMaterial,
+    const gutterFloorMaterial = new THREE.MeshLambertMaterial({
+      color: 0x111111,
     });
-    leftGutterBody.addShape(gutterShape);
-    leftGutterBody.position.copy(leftGutter.position);
-    this.world.addBody(leftGutterBody);
 
-    const rightGutterBody = new CANNON.Body({
-      mass: 0,
-      material: this.laneMaterial,
+    // Left gutter floor physics
+    const leftGutterFloor = new THREE.Mesh(
+      gutterFloorGeometry,
+      gutterFloorMaterial
+    );
+    leftGutterFloor.position.set(
+      -(this.LANE_WIDTH / 2 + gutterWidth / 2),
+      -gutterDepth + 0.025,
+      gutterLength / 2
+    );
+    this.scene.add(leftGutterFloor);
+
+    const leftGutterFloorBody = new CANNON.Body({ mass: 0 });
+    leftGutterFloorBody.addShape(
+      new CANNON.Box(new CANNON.Vec3(gutterWidth / 2, 0.025, gutterLength / 2))
+    );
+    leftGutterFloorBody.position.copy(leftGutterFloor.position);
+    leftGutterFloorBody.material = this.laneMaterial;
+    this.world.addBody(leftGutterFloorBody);
+
+    // Right gutter floor physics
+    const rightGutterFloor = new THREE.Mesh(
+      gutterFloorGeometry,
+      gutterFloorMaterial
+    );
+    rightGutterFloor.position.set(
+      this.LANE_WIDTH / 2 + gutterWidth / 2,
+      -gutterDepth + 0.025,
+      gutterLength / 2
+    );
+    this.scene.add(rightGutterFloor);
+
+    const rightGutterFloorBody = new CANNON.Body({ mass: 0 });
+    rightGutterFloorBody.addShape(
+      new CANNON.Box(new CANNON.Vec3(gutterWidth / 2, 0.025, gutterLength / 2))
+    );
+    rightGutterFloorBody.position.copy(rightGutterFloor.position);
+    rightGutterFloorBody.material = this.laneMaterial;
+    this.world.addBody(rightGutterFloorBody);
+
+    // Add decorative gutter caps (chrome/metal strips)
+    this.createGutterCaps(gutterWidth, gutterLength);
+  }
+
+  createGutterCaps(gutterWidth, gutterLength) {
+    // Chrome/metal caps on gutter edges
+    const capGeometry = new THREE.BoxGeometry(0.02, 0.03, gutterLength);
+    const capMaterial = new THREE.MeshPhongMaterial({
+      color: 0xc0c0c0, // Chrome/silver
+      specular: 0xffffff,
+      shininess: 200, // High shininess for metallic look
     });
-    rightGutterBody.addShape(gutterShape);
-    rightGutterBody.position.copy(rightGutter.position);
-    this.world.addBody(rightGutterBody);
+
+    // Left gutter caps
+    const leftOuterCap = new THREE.Mesh(capGeometry, capMaterial);
+    leftOuterCap.position.set(
+      -(this.LANE_WIDTH / 2 + gutterWidth),
+      0.01,
+      gutterLength / 2
+    );
+    this.scene.add(leftOuterCap);
+
+    const leftInnerCap = new THREE.Mesh(capGeometry, capMaterial);
+    leftInnerCap.position.set(-this.LANE_WIDTH / 2, 0.01, gutterLength / 2);
+    this.scene.add(leftInnerCap);
+
+    // Right gutter caps
+    const rightOuterCap = new THREE.Mesh(capGeometry, capMaterial);
+    rightOuterCap.position.set(
+      this.LANE_WIDTH / 2 + gutterWidth,
+      0.01,
+      gutterLength / 2
+    );
+    this.scene.add(rightOuterCap);
+
+    const rightInnerCap = new THREE.Mesh(capGeometry, capMaterial);
+    rightInnerCap.position.set(this.LANE_WIDTH / 2, 0.01, gutterLength / 2);
+    this.scene.add(rightInnerCap);
+  }
+
+  createPinCollectionArea() {
+    // Create the area behind pins where balls and pins collect (NOT a gutter!)
+    const collectionWidth = this.LANE_WIDTH + 0.8; // Wider than lane + gutters
+    const collectionDepth = 2; // 2 meters deep
+    const collectionHeight = 0.5;
+
+    // Collection area floor
+    const collectionGeometry = new THREE.BoxGeometry(
+      collectionWidth,
+      0.1,
+      collectionDepth
+    );
+    const collectionMaterial = new THREE.MeshLambertMaterial({
+      color: 0x2a2a2a,
+      transparent: true,
+      opacity: 0.9,
+    });
+
+    const collectionArea = new THREE.Mesh(
+      collectionGeometry,
+      collectionMaterial
+    );
+    collectionArea.position.set(
+      0,
+      -0.05,
+      this.LANE_LENGTH + collectionDepth / 2
+    );
+    collectionArea.receiveShadow = true;
+    this.scene.add(collectionArea);
+
+    // Collection area physics floor
+    const collectionBody = new CANNON.Body({ mass: 0 });
+    collectionBody.addShape(
+      new CANNON.Box(
+        new CANNON.Vec3(collectionWidth / 2, 0.05, collectionDepth / 2)
+      )
+    );
+    collectionBody.position.copy(collectionArea.position);
+    collectionBody.material = this.laneMaterial;
+    this.world.addBody(collectionBody);
+
+    // Collection area back wall to stop balls
+    const backWallGeometry = new THREE.BoxGeometry(
+      collectionWidth,
+      collectionHeight,
+      0.1
+    );
+    const backWall = new THREE.Mesh(backWallGeometry, collectionMaterial);
+    backWall.position.set(
+      0,
+      collectionHeight / 2,
+      this.LANE_LENGTH + collectionDepth - 0.05
+    );
+    this.scene.add(backWall);
+
+    const backWallBody = new CANNON.Body({ mass: 0 });
+    backWallBody.addShape(
+      new CANNON.Box(
+        new CANNON.Vec3(collectionWidth / 2, collectionHeight / 2, 0.05)
+      )
+    );
+    backWallBody.position.copy(backWall.position);
+    backWallBody.material = this.laneMaterial;
+    this.world.addBody(backWallBody);
+  }
+
+  createSafetyBoundaries() {
+    // Create invisible walls far from the lane to catch balls that fall off
+    // These are safety nets, not gameplay elements
+
+    const boundaryHeight = 1.0;
+    const boundaryThickness = 0.1;
+
+    // Far left boundary (beyond left gutter)
+    const leftBoundaryBody = new CANNON.Body({ mass: 0 });
+    leftBoundaryBody.addShape(
+      new CANNON.Box(
+        new CANNON.Vec3(
+          boundaryThickness / 2,
+          boundaryHeight / 2,
+          this.LANE_LENGTH * 1.5
+        )
+      )
+    );
+    leftBoundaryBody.position.set(-3, boundaryHeight / 2, this.LANE_LENGTH / 2);
+    leftBoundaryBody.material = this.laneMaterial;
+    this.world.addBody(leftBoundaryBody);
+
+    // Far right boundary (beyond right gutter)
+    const rightBoundaryBody = new CANNON.Body({ mass: 0 });
+    rightBoundaryBody.addShape(
+      new CANNON.Box(
+        new CANNON.Vec3(
+          boundaryThickness / 2,
+          boundaryHeight / 2,
+          this.LANE_LENGTH * 1.5
+        )
+      )
+    );
+    rightBoundaryBody.position.set(3, boundaryHeight / 2, this.LANE_LENGTH / 2);
+    rightBoundaryBody.material = this.laneMaterial;
+    this.world.addBody(rightBoundaryBody);
+
+    // Back boundary (way behind pin collection area)
+    const backBoundaryBody = new CANNON.Body({ mass: 0 });
+    backBoundaryBody.addShape(
+      new CANNON.Box(
+        new CANNON.Vec3(4, boundaryHeight / 2, boundaryThickness / 2)
+      )
+    );
+    backBoundaryBody.position.set(0, boundaryHeight / 2, this.LANE_LENGTH + 4);
+    backBoundaryBody.material = this.laneMaterial;
+    this.world.addBody(backBoundaryBody);
+
+    // Front boundary (behind throwing line)
+    const frontBoundaryBody = new CANNON.Body({ mass: 0 });
+    frontBoundaryBody.addShape(
+      new CANNON.Box(
+        new CANNON.Vec3(4, boundaryHeight / 2, boundaryThickness / 2)
+      )
+    );
+    frontBoundaryBody.position.set(0, boundaryHeight / 2, -3);
+    frontBoundaryBody.material = this.laneMaterial;
+    this.world.addBody(frontBoundaryBody);
+
+    // Ground plane to catch anything that falls
+    const groundBody = new CANNON.Body({ mass: 0 });
+    groundBody.addShape(new CANNON.Box(new CANNON.Vec3(10, 0.1, 20)));
+    groundBody.position.set(0, -2, this.LANE_LENGTH / 2);
+    groundBody.material = this.laneMaterial;
+    this.world.addBody(groundBody);
   }
 
   createPinDeckMarkers() {
@@ -252,22 +521,231 @@ class BowlingGame {
   }
 
   createLaneMarkings() {
-    // Foul line
-    const foulLineGeometry = new THREE.BoxGeometry(this.LANE_WIDTH, 0.02, 0.05);
-    const foulLineMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+    // Professional foul line - white with black border
+    const foulLineGeometry = new THREE.BoxGeometry(
+      this.LANE_WIDTH,
+      0.015,
+      0.08
+    );
+    const foulLineMaterial = new THREE.MeshPhongMaterial({
+      color: 0xffffff, // Pure white
+      specular: 0x222222,
+      shininess: 80,
+    });
     const foulLine = new THREE.Mesh(foulLineGeometry, foulLineMaterial);
-    foulLine.position.set(0, 0.01, 0);
+    foulLine.position.set(0, 0.008, 0);
     this.scene.add(foulLine);
 
-    // Arrows (aiming marks)
+    // Targeting arrows - dark triangles embedded in lane
     for (let i = 0; i < 7; i++) {
-      const arrowGeometry = new THREE.ConeGeometry(0.03, 0.1, 3);
-      const arrowMaterial = new THREE.MeshBasicMaterial({ color: 0x333333 });
+      const arrowGeometry = new THREE.ConeGeometry(0.025, 0.08, 3);
+      const arrowMaterial = new THREE.MeshPhongMaterial({
+        color: 0x2f4f4f, // Dark slate gray
+        specular: 0x111111,
+        shininess: 40,
+      });
       const arrow = new THREE.Mesh(arrowGeometry, arrowMaterial);
       arrow.rotation.x = Math.PI / 2;
-      arrow.position.set((i - 3) * 0.15, 0.02, 5);
+      arrow.position.set((i - 3) * 0.15, 0.001, 4.5);
       this.scene.add(arrow);
     }
+
+    // Range finder dots at various distances
+    this.createRangeFinderDots();
+
+    // Lane approach area
+    this.createApproachArea();
+  }
+
+  createRangeFinderDots() {
+    // Small dots at 7, 10, 12 foot marks for targeting
+    const dotPositions = [2.1, 3.0, 3.7]; // Approximate positions
+    const dotGeometry = new THREE.CylinderGeometry(0.015, 0.015, 0.005, 8);
+    const dotMaterial = new THREE.MeshPhongMaterial({ color: 0x2f4f4f });
+
+    dotPositions.forEach((zPos) => {
+      for (let x = -0.3; x <= 0.3; x += 0.15) {
+        const dot = new THREE.Mesh(dotGeometry, dotMaterial);
+        dot.position.set(x, 0.003, zPos);
+        this.scene.add(dot);
+      }
+    });
+  }
+
+  createApproachArea() {
+    // Approach area behind foul line - different material
+    const approachGeometry = new THREE.BoxGeometry(
+      this.LANE_WIDTH + 0.4,
+      0.08,
+      4
+    );
+    const approachMaterial = new THREE.MeshPhongMaterial({
+      color: 0xf5deb3, // Wheat color - lighter wood
+      specular: 0x333333,
+      shininess: 60,
+    });
+    const approach = new THREE.Mesh(approachGeometry, approachMaterial);
+    approach.position.set(0, -0.04, -2.5);
+    approach.receiveShadow = true;
+    this.scene.add(approach);
+  }
+
+  createBowlingAlleyAtmosphere() {
+    // Add side walls with typical bowling alley paneling
+    this.createSideWalls();
+
+    // Add ceiling elements
+    this.createCeiling();
+
+    // Add decorative elements
+    this.createDecorativeElements();
+  }
+
+  createSideWalls() {
+    const wallHeight = 3;
+    const wallThickness = 0.1;
+
+    // Left wall
+    const leftWallGeometry = new THREE.BoxGeometry(
+      wallThickness,
+      wallHeight,
+      this.LANE_LENGTH + 6
+    );
+    const wallMaterial = new THREE.MeshPhongMaterial({
+      color: 0x8b7355, // Tan/beige typical of bowling alleys
+      specular: 0x222222,
+      shininess: 20,
+    });
+
+    const leftWall = new THREE.Mesh(leftWallGeometry, wallMaterial);
+    leftWall.position.set(-2.5, wallHeight / 2, this.LANE_LENGTH / 2 - 1);
+    leftWall.receiveShadow = true;
+    this.scene.add(leftWall);
+
+    // Right wall
+    const rightWall = new THREE.Mesh(leftWallGeometry, wallMaterial);
+    rightWall.position.set(2.5, wallHeight / 2, this.LANE_LENGTH / 2 - 1);
+    rightWall.receiveShadow = true;
+    this.scene.add(rightWall);
+  }
+
+  createCeiling() {
+    // Dropped ceiling with tiles
+    const ceilingGeometry = new THREE.BoxGeometry(
+      6,
+      0.05,
+      this.LANE_LENGTH + 4
+    );
+    const ceilingMaterial = new THREE.MeshLambertMaterial({
+      color: 0xf5f5dc, // Beige ceiling tiles
+      transparent: true,
+      opacity: 0.9,
+    });
+
+    const ceiling = new THREE.Mesh(ceilingGeometry, ceilingMaterial);
+    ceiling.position.set(0, 3.5, this.LANE_LENGTH / 2);
+    ceiling.receiveShadow = false;
+    this.scene.add(ceiling);
+
+    // Ceiling tile grid lines
+    this.createCeilingGrid();
+  }
+
+  createCeilingGrid() {
+    // Create grid pattern on ceiling
+    const linesMaterial = new THREE.MeshBasicMaterial({ color: 0xd3d3d3 });
+
+    // Horizontal lines
+    for (let i = 0; i < 8; i++) {
+      const lineGeometry = new THREE.BoxGeometry(6, 0.01, 0.02);
+      const line = new THREE.Mesh(lineGeometry, linesMaterial);
+      line.position.set(0, 3.51, i * 2);
+      this.scene.add(line);
+    }
+
+    // Vertical lines
+    for (let i = 0; i < 4; i++) {
+      const lineGeometry = new THREE.BoxGeometry(
+        0.02,
+        0.01,
+        this.LANE_LENGTH + 4
+      );
+      const line = new THREE.Mesh(lineGeometry, linesMaterial);
+      line.position.set(-3 + i * 2, 3.51, this.LANE_LENGTH / 2);
+      this.scene.add(line);
+    }
+  }
+
+  createDecorativeElements() {
+    // Add some decorative bowling alley elements
+
+    // Ball return mechanism (cosmetic)
+    this.createBallReturn();
+
+    // Lane number sign
+    this.createLaneNumberSign();
+
+    // Seating area
+    this.createSeatingArea();
+  }
+
+  createBallReturn() {
+    // Simple ball return track along the right side
+    const returnGeometry = new THREE.BoxGeometry(
+      0.15,
+      0.08,
+      this.LANE_LENGTH * 0.8
+    );
+    const returnMaterial = new THREE.MeshPhongMaterial({
+      color: 0x2f2f2f, // Dark gray metal
+      specular: 0x666666,
+      shininess: 80,
+    });
+
+    const ballReturn = new THREE.Mesh(returnGeometry, returnMaterial);
+    ballReturn.position.set(
+      this.LANE_WIDTH / 2 + 0.4,
+      0.04,
+      this.LANE_LENGTH * 0.3
+    );
+    this.scene.add(ballReturn);
+  }
+
+  createLaneNumberSign() {
+    // Lane number display
+    const signGeometry = new THREE.BoxGeometry(0.3, 0.2, 0.05);
+    const signMaterial = new THREE.MeshPhongMaterial({
+      color: 0x000080, // Navy blue
+      specular: 0x444444,
+      shininess: 60,
+    });
+
+    const sign = new THREE.Mesh(signGeometry, signMaterial);
+    sign.position.set(-1.2, 1.5, this.LANE_LENGTH - 0.5);
+    this.scene.add(sign);
+
+    // Lane number "7" (since we're in Q7 folder)
+    const numberGeometry = new THREE.BoxGeometry(0.25, 0.15, 0.02);
+    const numberMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff });
+    const number = new THREE.Mesh(numberGeometry, numberMaterial);
+    number.position.set(-1.2, 1.5, this.LANE_LENGTH - 0.47);
+    this.scene.add(number);
+  }
+
+  createSeatingArea() {
+    // Simple bench behind the approach
+    const benchGeometry = new THREE.BoxGeometry(2, 0.3, 0.4);
+    const benchMaterial = new THREE.MeshPhongMaterial({
+      color: 0x8b4513, // Saddle brown
+      specular: 0x333333,
+      shininess: 40,
+    });
+
+    const bench = new THREE.Mesh(benchGeometry, benchMaterial);
+    bench.position.set(0, 0.15, -5);
+    bench.receiveShadow = true;
+    bench.castShadow = true;
+    this.scene.add(bench);
   }
 
   createBall() {
@@ -337,7 +815,7 @@ class BowlingGame {
 
   getPinPositions() {
     const spacing = 0.25; // Slightly tighter spacing for shorter lane
-    const baseZ = this.LANE_LENGTH - 2; // 2m from end for better fit
+    const baseZ = this.LANE_LENGTH - 0.5; // Place pins at the very end of the lane
 
     return [
       // Back row (4 pins)
@@ -527,14 +1005,43 @@ class BowlingGame {
       const velocity = this.ballBody.velocity.length();
       const angularVelocity = this.ballBody.angularVelocity.length();
 
-      // Check if ball is in gutter
-      if (Math.abs(ballPos.x) > this.LANE_WIDTH / 2) {
+      // Check if ball has fallen off the map (y < -1 indicates it fell through)
+      if (ballPos.y < -1.0) {
+        console.log("Ball fell off map at position:", ballPos);
+        this.handleBallFellOff();
+        return;
+      }
+
+      // Check if ball went too far beyond boundaries (safety check)
+      if (
+        Math.abs(ballPos.x) > 5 ||
+        ballPos.z < -5 ||
+        ballPos.z > this.LANE_LENGTH + 5
+      ) {
+        console.log("Ball went out of bounds at position:", ballPos);
+        this.handleBallOutOfBounds();
+        return;
+      }
+
+      // Check how many pins have been knocked down during this frame
+      const currentPinsDown = this.countFallenPins();
+      const pinsKnockedThisFrame =
+        currentPinsDown > this.gameState.pinsDownThisFrame;
+
+      // Only count as gutter ball if:
+      // 1. Ball is in SIDE gutters AND still on the lane (not at end)
+      // 2. AND no pins were knocked down during this FRAME (not just this throw)
+      if (
+        Math.abs(ballPos.x) > this.LANE_WIDTH / 2 &&
+        ballPos.z < this.LANE_LENGTH - 1 &&
+        !pinsKnockedThisFrame
+      ) {
         this.handleGutterBall();
         return;
       }
 
-      // Check if ball reached the end of the lane
-      if (ballPos.z > this.LANE_LENGTH + 2) {
+      // Check if ball reached the pin collection area (normal end of play)
+      if (ballPos.z > this.LANE_LENGTH + 0.5) {
         this.handleBallReturn();
         return;
       }
@@ -568,12 +1075,21 @@ class BowlingGame {
     this.ballBody.angularVelocity.set(0, 0, 0);
     this.ballBody.sleep(); // Put ball body to sleep to stop physics calculations
 
-    // Count fallen pins
+    const ballPos = this.ballBody.position;
     const pinsDown = this.countFallenPins();
-    this.gameState.pinsDown = pinsDown;
 
-    // Update score
-    this.updateScore(pinsDown);
+    // Only score pins if:
+    // 1. Ball reached near the pin area (z > LANE_LENGTH - 2), OR
+    // 2. Ball is in gutter after hitting pins (handled separately)
+    // This prevents scoring when ball stops early on the lane
+    if (ballPos.z >= this.LANE_LENGTH - 2) {
+      // Ball reached the pin area - legitimate scoring
+      this.updateScore(pinsDown);
+    } else {
+      // Ball stopped early without reaching pins - no score
+      this.updateScore(0);
+      this.showMessage("Ball stopped before pins!", "info");
+    }
 
     // Check game state
     this.checkGameState();
@@ -609,14 +1125,69 @@ class BowlingGame {
     this.ballBody.angularVelocity.set(0, 0, 0);
     this.ballBody.sleep();
 
-    // Count fallen pins and remove them
+    // Count fallen pins - DON'T update gameState.pinsDown yet!
     const pinsDown = this.countFallenPins();
-    this.gameState.pinsDown = pinsDown;
 
-    // Remove fallen pins (simulate pin sweep)
-    this.removeFallenPins();
-
+    // Update score FIRST (it needs the old gameState.pinsDown for Ball 2 calculation)
     this.updateScore(pinsDown);
+
+    this.checkGameState();
+    this.updateUI();
+  }
+
+  handleBallFellOff() {
+    console.log("Ball fell off the map!");
+    this.gameState.ballSettled = true;
+    this.gameState.ballThrown = false;
+
+    // Stop the ball physics
+    this.ballBody.velocity.set(0, 0, 0);
+    this.ballBody.angularVelocity.set(0, 0, 0);
+    this.ballBody.sleep();
+
+    // Count pins that were knocked down before ball fell
+    const pinsDown = this.countFallenPins();
+
+    // Show message and score the pins that were knocked
+    if (pinsDown > 0) {
+      this.showMessage(`Ball fell off! But ${pinsDown} pins counted!`, "pins");
+      this.updateScore(pinsDown);
+    } else {
+      this.showMessage("Ball fell off the map!", "miss");
+      this.updateScore(0);
+    }
+
+    // Reset ball position for safety
+    this.resetBallPosition();
+
+    this.checkGameState();
+    this.updateUI();
+  }
+
+  handleBallOutOfBounds() {
+    console.log("Ball went out of bounds!");
+    this.gameState.ballSettled = true;
+    this.gameState.ballThrown = false;
+
+    // Stop the ball physics
+    this.ballBody.velocity.set(0, 0, 0);
+    this.ballBody.angularVelocity.set(0, 0, 0);
+    this.ballBody.sleep();
+
+    // Count pins knocked before going out of bounds
+    const pinsDown = this.countFallenPins();
+
+    if (pinsDown > 0) {
+      this.showMessage(`Out of bounds! But ${pinsDown} pins counted!`, "pins");
+      this.updateScore(pinsDown);
+    } else {
+      this.showMessage("Ball went out of bounds!", "miss");
+      this.updateScore(0);
+    }
+
+    // Reset ball position
+    this.resetBallPosition();
+
     this.checkGameState();
     this.updateUI();
   }
@@ -642,12 +1213,19 @@ class BowlingGame {
   countFallenPins() {
     let fallenCount = 0;
     this.pinBodies.forEach((pinBody) => {
-      // Check if pin is significantly tilted or displaced
+      // Check if pin is significantly tilted, displaced, OR moved away by removeFallenPins
       const rotation = pinBody.quaternion;
       const upVector = new CANNON.Vec3(0, 1, 0);
       rotation.vmult(upVector, upVector);
 
-      if (upVector.y < 0.7 || pinBody.position.y < 0.1) {
+      // Count pin as fallen if:
+      // 1. It's tilted/displaced on the lane, OR
+      // 2. It was moved far away by removeFallenPins (position x > 50 means it was removed)
+      if (
+        upVector.y < 0.7 ||
+        pinBody.position.y < 0.1 ||
+        pinBody.position.x > 50
+      ) {
         fallenCount++;
       }
     });
@@ -658,12 +1236,53 @@ class BowlingGame {
     const frame = this.gameState.currentFrame - 1;
     const ball = this.gameState.currentBall;
 
+    console.log(
+      `updateScore DEBUG: Frame ${this.gameState.currentFrame}, Ball ${ball}, pinsDown=${pinsDown}, gameState.pinsDown=${this.gameState.pinsDown}`
+    );
+
     if (!this.gameState.scores[frame]) {
       this.gameState.scores[frame] = [];
     }
 
-    this.gameState.scores[frame][ball - 1] =
-      pinsDown - (this.gameState.scores[frame][0] || 0);
+    if (ball === 1) {
+      // First ball - record pins knocked this ball only
+      const pinsThisBall = pinsDown;
+      this.gameState.scores[frame][0] = pinsThisBall;
+      this.gameState.pinsDown = pinsDown; // Total pins down after this ball
+
+      console.log(`Ball 1: ${pinsThisBall} pins knocked down`);
+
+      // Show visual feedback for first ball
+      if (pinsThisBall === 10) {
+        this.showMessage("STRIKE!", "strike");
+      } else if (pinsThisBall > 0) {
+        this.showMessage(`${pinsThisBall} Pins Down!`, "pins");
+      }
+    } else {
+      // Second ball - record pins knocked this ball only
+      const pinsThisBall = pinsDown - this.gameState.pinsDown;
+      console.log(
+        `Ball 2 DEBUG: pinsDown=${pinsDown}, gameState.pinsDown=${this.gameState.pinsDown}, pinsThisBall=${pinsThisBall}`
+      );
+
+      // Ensure we don't get negative values due to timing issues
+      const actualPinsThisBall = Math.max(0, pinsThisBall);
+      this.gameState.scores[frame][1] = actualPinsThisBall;
+      this.gameState.pinsDown = pinsDown; // Update total
+
+      console.log(`Ball 2: ${actualPinsThisBall} pins knocked down this ball`);
+
+      // Show visual feedback for second ball
+      const totalPinsThisFrame =
+        this.gameState.scores[frame][0] + actualPinsThisBall;
+      if (totalPinsThisFrame === 10) {
+        this.showMessage("SPARE!", "spare");
+      } else if (actualPinsThisBall > 0) {
+        this.showMessage(`+${actualPinsThisBall} More Pins!`, "pins");
+      } else {
+        this.showMessage("No Additional Pins", "miss");
+      }
+    }
 
     // Calculate total score
     this.calculateTotalScore();
@@ -718,12 +1337,7 @@ class BowlingGame {
     const currentBall = this.gameState.currentBall;
 
     if (pinsDown === 10 || currentBall === 2) {
-      // Frame complete
-      if (pinsDown === 10 && currentBall === 1) {
-        this.showMessage("STRIKE!", "strike");
-      } else if (pinsDown === 10 && currentBall === 2) {
-        this.showMessage("SPARE!", "spare");
-      }
+      // Frame complete - visual feedback handled in updateScore method
 
       this.nextFrame();
     } else {
@@ -754,6 +1368,7 @@ class BowlingGame {
     } else {
       this.gameState.currentFrame++;
       this.gameState.currentBall = 1;
+      this.gameState.pinsDownThisFrame = 0; // Reset frame pin tracking
       this.resetPins();
       this.resetBallPosition();
     }
@@ -773,6 +1388,7 @@ class BowlingGame {
       pinBody.wakeUp();
     });
     this.gameState.pinsDown = 0;
+    this.gameState.pinsDownThisFrame = 0; // Reset frame tracking when pins reset
   }
 
   resetBallPosition() {
@@ -786,7 +1402,7 @@ class BowlingGame {
     this.gameState = {
       currentFrame: 1,
       currentBall: 1,
-      scores: new Array(10).fill([]),
+      scores: Array.from({ length: 10 }, () => []), // Create separate arrays for each frame
       totalScore: 0,
       pinsDown: 0,
       gameOver: false,
@@ -831,6 +1447,11 @@ class BowlingGame {
       const frameDiv = document.createElement("div");
       frameDiv.className = "frame";
 
+      // Highlight current frame
+      if (i === this.gameState.currentFrame - 1) {
+        frameDiv.classList.add("current-frame");
+      }
+
       const frameNumber = document.createElement("div");
       frameNumber.className = "frame-number";
       frameNumber.textContent = i + 1;
@@ -842,28 +1463,33 @@ class BowlingGame {
       const scores = this.gameState.scores[i];
       if (scores && scores.length > 0) {
         if (i < 9) {
-          // Frames 1-9
+          // Frames 1-9: Proper bowling notation
           if (scores[0] === 10) {
+            // Strike
             frameScore.textContent = "X";
           } else if (scores.length === 2) {
             if (scores[0] + scores[1] === 10) {
+              // Spare: show first ball score + "/"
               frameScore.textContent = `${scores[0]}/`;
             } else {
-              frameScore.textContent = `${scores[0]}${scores[1]}`;
+              // Regular scoring: show both ball scores with proper spacing
+              const secondBall = scores[1] === 0 ? "-" : scores[1];
+              frameScore.textContent = `${scores[0]} ${secondBall}`;
             }
           } else {
-            frameScore.textContent = `${scores[0]}`;
+            // Only first ball played
+            frameScore.textContent = scores[0] === 0 ? "-" : `${scores[0]}`;
           }
         } else {
-          // 10th frame
+          // 10th frame: Special rules
           let text = "";
           scores.forEach((score, index) => {
             if (score === 10) {
-              text += "X";
+              text += "X ";
             } else if (index > 0 && scores[index - 1] + score === 10) {
-              text += "/";
+              text += "/ ";
             } else {
-              text += score;
+              text += `${score} `;
             }
           });
           frameScore.textContent = text;
