@@ -4,6 +4,15 @@ import Nash from "./Nash";
 const { Title, Paragraph, Text } = Typography;
 
 function App() {
+  ["click", "route"].forEach((eType) => {
+    window.addEventListener(eType, (event) => {
+      console.log({
+        Timestamp_of_event: event.timeStamp,
+        type_of_event: event.type,
+        event_Object: event.target,
+      });
+    });
+  });
   // Payoff matrix data for the table
   const payoffData = [
     {

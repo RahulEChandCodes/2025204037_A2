@@ -1192,6 +1192,17 @@
         }
         return i;
       }
+
+      // This piece of code is what is also written in Q6/eventLog.js
+      ["click", "route"].forEach((eType) => {
+        window.addEventListener(eType, (event) => {
+          console.log({
+            Timestamp_of_event: event.timeStamp,
+            type_of_event: event.type,
+            event_Object: event.target,
+          });
+        });
+      });
     </script>
   </body>
 </html>

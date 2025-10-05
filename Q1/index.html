@@ -124,5 +124,16 @@
         <div class="skill-item">CI/CD</div>
       </div>
     </section>
+    <script>
+      ["click", "route"].forEach((eType) => {
+        window.addEventListener(eType, (event) => {
+          console.log({
+            Timestamp_of_event: event.timeStamp,
+            type_of_event: event.type,
+            event_Object: event.target,
+          });
+        });
+      });
+    </script>
   </body>
 </html>

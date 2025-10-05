@@ -11,6 +11,15 @@ const { Header, Content } = Layout;
 const { Title } = Typography;
 
 function App() {
+  ["click", "route"].forEach((eType) => {
+    window.addEventListener(eType, (event) => {
+      console.log({
+        Timestamp_of_event: event.timeStamp,
+        type_of_event: event.type,
+        event_Object: event.target,
+      });
+    });
+  });
   const [parsedSchema, setParsedSchema] = useState(null);
   const [error, setError] = useState(null);
   const [api, contextHolder] = notification.useNotification();
